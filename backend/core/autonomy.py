@@ -90,8 +90,17 @@ def run_autonomy(sim) -> dict:
             actions["skipped"] += 1
 
     # Prune stale evasion keys (conjunctions that are no longer active)
-    active_pairs = {f"{e.satellite_id}::{e.debris_id}" for e in events}
-    _active_evasions = _active_evasions & active_pairs
+    still_active = set()
+    for pair in _active_evasions:
+        # If the pair is still in the current warnings, keep it
+        if any(f"{e.satellite_id}::{e.debris_id}" == pair for e in events):
+            still_active.add(pair)
+        else:
+            # If it's gone from warnings, check if it passed or was dodged
+            # For now, we'll let it clear so the sat can return to NOMINAL
+            pass 
+            
+    _active_evasions = still_active
 
     return actions
 

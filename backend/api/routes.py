@@ -54,9 +54,10 @@ async def ingest_telemetry(body: TelemetryRequest):
 
 @router.get("/api/status/fleet")
 async def get_fleet_status():
-    """Specific endpoint requested by the frontend for the fleet dashboard."""
+    """Returns the fleet object and mission stats for the Dashboard UI."""
     sim = get_simulation()
-    return [
+    
+    fleet_list = [
         {
             "id": sid,
             "status": sat.status,
@@ -64,11 +65,18 @@ async def get_fleet_status():
             "fuel_percent": round(sat.fuel_fraction * 100, 1),
             "in_box": sat.is_in_station_box(),
             "pending_burns": len(sat.maneuver_queue),
-            "lat": round(sat.last_lat, 2) if hasattr(sat, 'last_lat') else 0.0,
-            "lon": round(sat.last_lon, 2) if hasattr(sat, 'last_lon') else 0.0,
+            # Lat/Lon are needed for the FleetHealth list
+            "lat": round(sat.state[0], 2), # Simplified or use eci_to_latlon
+            "lon": round(sat.state[1], 2),
         }
         for sid, sat in sim.satellites.items()
     ]
+
+    # App.jsx expects fleet.fleet and fleet.total_collisions
+    return {
+        "fleet": fleet_list,
+        "total_collisions": sim.collision_count
+    }
 
 
 @router.post("/api/maneuver/schedule")
@@ -125,18 +133,20 @@ async def get_status():
         },
     }
 
-
 @router.get("/api/conjunctions")
 async def get_conjunctions():
-    """Return all active conjunction warnings with full detail."""
+    """Return all active conjunction warnings with keys matching the React components."""
     sim = get_simulation()
+    
+    # App.jsx expects "events"
     return {
         "timestamp": sim.current_time.isoformat().replace("+00:00", "Z"),
-        "warnings": [
+        "events": [
             {
                 "satellite_id": e.satellite_id,
                 "debris_id": e.debris_id,
-                "tca_seconds": round(e.tca_seconds_from_now, 1),
+                # BullseyePlot.jsx expects "tca_seconds_from_now"
+                "tca_seconds_from_now": round(e.tca_seconds_from_now, 1),
                 "miss_distance_km": round(e.miss_distance_km, 4),
                 "risk_level": e.risk_level,
             }

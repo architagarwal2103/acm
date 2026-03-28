@@ -1,0 +1,47 @@
+# --- Python / Backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+venv/
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- Frontend (React/Vite) ---
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.eslintcache
+*.local
+.DS_Store
+
+# --- Firebase / Secrets ---
+# DO NOT commit your service account keys!
+*.json
+!package.json
+!tsconfig.json
+serviceAccountKey.json
+
+# --- IDE / OS Specific ---
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+.apple

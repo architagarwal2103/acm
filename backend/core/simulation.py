@@ -178,6 +178,18 @@ class SimulationState:
         self.collision_count += total_collisions_this_tick
         self.current_time = end_time
 
+        updated_sat_states = {sid: sat.state for sid, sat in self.satellites.items()}
+
+        # 2. Force the assessor to update its internal KD-Tree/State
+        self.conjunction_assessor.update_satellites(updated_sat_states)
+        self.conjunction_assessor.update_debris(self.debris_states)
+
+        # 3. Now return the result (run_autonomy will be called next in routes.py)
+        # return {
+        #     "status": "STEP_COMPLETE",
+        #     # ... rest of your return object
+        # }
+
         return {
             "status": "STEP_COMPLETE",
             "new_timestamp": self.current_time.isoformat().replace("+00:00", "Z"),

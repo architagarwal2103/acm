@@ -96,7 +96,7 @@ class Satellite:
         return float(np.linalg.norm(self.state[:3] - self.nominal_state[:3]))
 
     def is_in_station_box(self) -> bool:
-        return self.distance_from_slot() <= STATION_KEEP_BOX_KM
+        return bool(self.distance_from_slot() <= STATION_KEEP_BOX_KM)
 
     def queue_maneuver(self, burn: BurnCommand) -> None:
         """Add a burn to the maneuver queue, sorted by burn time."""

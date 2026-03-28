@@ -46,51 +46,82 @@ def find_tca(
     horizon_s: float = PROPAGATION_HORIZON_S,
     dt: float = DEFAULT_DT_S,
 ) -> tuple[float, float, np.ndarray, np.ndarray]:
+    """
+    Three-phase TCA search:
+      Phase 1 — Coarse scan at 30s steps to find the approximate minimum bracket.
+      Phase 2 — Fine scan at 0.5s steps within ±30s of the Phase 1 minimum.
+      Phase 3 — Ultra-fine scan at 0.05s steps within ±0.5s of the Phase 2 minimum.
+
+    This handles head-on conjunctions (closing velocity ~15 km/s) where a 10s
+    coarse step skips over a sub-km miss distance entirely.
+    """
+    # ── Phase 1: Coarse scan (30s steps over full horizon) ──────────────────
+    COARSE_DT = 30.0
+
     sat = sat_state.copy()
     deb = deb_state.copy()
-
     min_dist = np.inf
     min_t = 0.0
+    prev_sat = sat.copy()
+    prev_deb = deb.copy()
+    bracket_t = 0.0
 
-    # 1. Coarse Search (The "Global" Scan)
     t = 0.0
     while t <= horizon_s:
         dist = np.linalg.norm(sat[:3] - deb[:3])
         if dist < min_dist:
             min_dist = dist
             min_t = t
-        
-        sat = rk4_step(sat, dt)
-        deb = rk4_step(deb, dt)
-        t += dt
+            bracket_t = max(0.0, t - COARSE_DT)  # one step back = bracket start
+            prev_sat = sat.copy()
+            prev_deb = deb.copy()
+        sat = rk4_step(sat, COARSE_DT)
+        deb = rk4_step(deb, COARSE_DT)
+        t += COARSE_DT
 
-    # 2. Bisection Refinement (The "Zoom")
-    # We look in the window [min_t - dt, min_t + dt]
-    t_start = max(0, min_t - dt)
-    t_end = min(horizon_s, min_t + dt)
-    
-    # Simple Golden Section Search or Bisection on the interval
-    # For a hackathon, a 5-step sub-scan is usually enough to "catch" the hit
-    refine_dt = dt / 10.0
-    curr_t = t_start
-    # Reset to the start of the "danger window"
-    s_refine = propagate_to_time(sat_state, t_start)
-    d_refine = propagate_to_time(deb_state, t_start)
-    
-    final_sat_pos = s_refine[:3].copy()
-    final_deb_pos = d_refine[:3].copy()
+    # ── Phase 2: Fine scan (0.5s steps over ±30s bracket) ───────────────────
+    FINE_DT = 0.5
 
-    while curr_t <= t_end:
-        dist = np.linalg.norm(s_refine[:3] - d_refine[:3])
+    s2 = propagate_to_time(sat_state, bracket_t)
+    d2 = propagate_to_time(deb_state, bracket_t)
+    fine_end = min(horizon_s, min_t + COARSE_DT)
+    curr_t = bracket_t
+    fine_min_t = min_t
+    final_sat_pos = s2[:3].copy()
+    final_deb_pos = d2[:3].copy()
+
+    while curr_t <= fine_end:
+        dist = np.linalg.norm(s2[:3] - d2[:3])
+        if dist < min_dist:
+            min_dist = dist
+            fine_min_t = curr_t
+            final_sat_pos = s2[:3].copy()
+            final_deb_pos = d2[:3].copy()
+        s2 = rk4_step(s2, FINE_DT)
+        d2 = rk4_step(d2, FINE_DT)
+        curr_t += FINE_DT
+
+    min_t = fine_min_t
+
+    # ── Phase 3: Ultra-fine scan (0.05s steps over ±0.5s bracket) ───────────
+    ULTRA_DT = 0.05
+
+    ultra_start = max(0.0, min_t - FINE_DT)
+    ultra_end = min(horizon_s, min_t + FINE_DT)
+    s3 = propagate_to_time(sat_state, ultra_start)
+    d3 = propagate_to_time(deb_state, ultra_start)
+    curr_t = ultra_start
+
+    while curr_t <= ultra_end:
+        dist = np.linalg.norm(s3[:3] - d3[:3])
         if dist < min_dist:
             min_dist = dist
             min_t = curr_t
-            final_sat_pos = s_refine[:3].copy()
-            final_deb_pos = d_refine[:3].copy()
-            
-        s_refine = rk4_step(s_refine, refine_dt)
-        d_refine = rk4_step(d_refine, refine_dt)
-        curr_t += refine_dt
+            final_sat_pos = s3[:3].copy()
+            final_deb_pos = d3[:3].copy()
+        s3 = rk4_step(s3, ULTRA_DT)
+        d3 = rk4_step(d3, ULTRA_DT)
+        curr_t += ULTRA_DT
 
     return min_t, min_dist, final_sat_pos, final_deb_pos
 

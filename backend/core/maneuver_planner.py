@@ -24,7 +24,7 @@ from .constants import (
 logger = logging.getLogger("acm.planner")
 
 # Safety stand-off after evasion (km) — want at least this miss distance
-TARGET_STANDOFF_KM = 2.0
+TARGET_STANDOFF_KM = 3.0
 
 # How far in transverse direction to push (km) — translates to ΔV
 # For LEO ~7.5 km/s orbital velocity, 1 m/s ≈ 0.56 km lateral displacement per min
@@ -112,7 +112,6 @@ def plan_cola_maneuvers(
     # Burn must happen before TCA with at least 60s margin
     burn_margin_s = 60.0
     latest_evasion = tca_time - timedelta(seconds=burn_margin_s)
-
     if earliest_burn >= latest_evasion:
         logger.warning(
             f"[PLANNER] Cannot schedule evasion for {sat_id} vs {event.debris_id}: "
@@ -120,12 +119,13 @@ def plan_cola_maneuvers(
         )
         return None
 
+    burn_time = earliest_burn
+
     if mass_fuel_kg <= 0.5:
         logger.warning(f"[PLANNER] {sat_id} has insufficient fuel for evasion")
         return None
 
     # Propagate satellite to burn time to get accurate state
-    burn_time = earliest_burn
     dt_to_burn = (burn_time - current_time).total_seconds()
     sat_state_at_burn = propagate_to_time(sat_state, dt_to_burn) if dt_to_burn > 0 else sat_state.copy()
     deb_state_at_burn = propagate_to_time(

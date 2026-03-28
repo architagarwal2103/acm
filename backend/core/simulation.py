@@ -32,6 +32,7 @@ class SimulationState:
         self.collision_count: int = 0
         self.maneuvers_executed: int = 0
         self._gst_rad: float = 0.0  # Simplified: track GST
+        self.active_evasions: set[str] = set()  # Dedup guard: sat_id_deb_id pairs
 
     # ------------------------------------------------------------------ #
     #  Telemetry Ingestion
@@ -91,12 +92,12 @@ class SimulationState:
             dv_eci = np.array([dv["x"], dv["y"], dv["z"]])
 
             # Validate: minimum time = now + latency
-            earliest = self.current_time + timedelta(seconds=SIGNAL_LATENCY_S)
-            if burn_time < earliest:
-                return {
-                    "status": "REJECTED",
-                    "reason": f"Burn {burn_data['burn_id']} scheduled before latency window"
-                }
+            # earliest = self.current_time + timedelta(seconds=SIGNAL_LATENCY_S)
+            # if burn_time < earliest:
+            #     return {
+            #         "status": "REJECTED",
+            #         "reason": f"Burn {burn_data['burn_id']} scheduled before latency window"
+            #     }
 
             # Validate: LOS at burn time (simplified - check current position)
             los_ok, gs_id = has_ground_contact(sat.state[:3], self._gst_rad)
@@ -147,7 +148,7 @@ class SimulationState:
 
             # 1. Move the Brain: Run autonomy BEFORE the physics jump
             # This allows satellites to schedule burns for the current window
-            run_autonomy(self)
+            # run_autonomy(self)
 
             # 2. Propagate all debris
             for deb_id in list(self.debris_states.keys()):
@@ -160,7 +161,9 @@ class SimulationState:
 
                 # Execute burns that are due in THIS chunk
                 sub_time = self.current_time + timedelta(seconds=t + chunk)
+                
                 for burn in sat.pop_due_burns(sub_time):
+                    print(f"🔥 EXECUTING BURN: {burn.burn_id} at SimTime: {sub_time}")
                     try:
                         result = sat.apply_burn(burn)
                         maneuvers_this_step += 1

@@ -20,13 +20,13 @@ FUEL_EOL_FRACTION = 0.05    # End-of-life fuel threshold (5%)
 
 # --- Conjunction & Safety ---
 CONJUNCTION_THRESHOLD_KM = 0.100   # Critical miss distance (100 m → km)
-CONJUNCTION_WARNING_KM   = 5.0     # Yellow warning zone (km)
+CONJUNCTION_WARNING_KM   = 2.0     # Yellow warning zone (km)
 STATION_KEEP_BOX_KM      = 10.0    # Station-keeping radius (km)
 
 # --- Propagation ---
 PROPAGATION_HORIZON_S = 86400.0    # 24-hour prediction window (seconds)
 DEFAULT_DT_S          = 10.0       # Default RK4 timestep (seconds)
-SIGNAL_LATENCY_S      = 600.0       # Ground uplink latency (seconds)
+SIGNAL_LATENCY_S      = 1.0       # Ground uplink latency (seconds)
 
 # --- Spatial Indexing ---
-KDTREE_COARSE_RADIUS_KM = 50.0     # Pre-filter radius before precise TCA check
+KDTREE_COARSE_RADIUS_KM = 30000.0     # Pre-filter radius before precise TCA check

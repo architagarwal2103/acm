@@ -50,6 +50,11 @@ docker run -p 8000:8000 acm
 ```
 
 ### Option 2: Local Dev
+Do this before running 
+```bash
+git fetch origin
+git reset --hard origin/main
+```
 ```bash
 # Backend
 cd backend
